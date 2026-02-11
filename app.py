@@ -1,44 +1,29 @@
 from flask import Flask, request, render_template_string
 import unicodedata
+import os
 
 app = Flask(__name__)
 
-# =========================
+
 # ====== ALGORITMOS =======
-# =========================
 
 def digitsSum(inputInt: int) -> int:
-    inputInt = abs(inputInt)
-    suma = 0
-    while inputInt > 0:
-        suma += inputInt % 10
-        inputInt //= 10
-    return suma
+    return sum(int(d) for d in str(abs(inputInt)))
 
 
 def isPalindrome(inputStr: str) -> bool:
-    # Convertir a minúsculas
+    # Normalizar texto
     inputStr = inputStr.lower()
 
-    # Eliminar acentos
     inputStr = ''.join(
         c for c in unicodedata.normalize('NFD', inputStr)
         if unicodedata.category(c) != 'Mn'
     )
 
-    # Eliminar espacios
-    inputStr = inputStr.replace(" ", "")
+    # Mantener solo letras y números
+    inputStr = ''.join(c for c in inputStr if c.isalnum())
 
-    left = 0
-    right = len(inputStr) - 1
-
-    while left < right:
-        if inputStr[left] != inputStr[right]:
-            return False
-        left += 1
-        right -= 1
-
-    return True
+    return inputStr == inputStr[::-1]
 
 
 def integerSort(inputArray):
@@ -68,10 +53,8 @@ def merge(left, right):
     result.extend(right[j:])
     return result
 
-
-# =========================
 # ====== FRONTEND =========
-# =========================
+
 
 HTML_TEMPLATE = """
 <!DOCTYPE html>
@@ -80,32 +63,65 @@ HTML_TEMPLATE = """
     <title>Clever Internship Challenge</title>
     <style>
         body {
-            font-family: Arial;
-            background-color: #f4f4f4;
+            font-family: 'Segoe UI', sans-serif;
+            background-color: #0f0f0f;
+            color: white;
             text-align: center;
             padding: 40px;
         }
+
+        h1 {
+            color: #ff1e1e;
+            margin-bottom: 30px;
+        }
+
         .card {
-            background: white;
-            padding: 30px;
+            background: #1a1a1a;
+            padding: 40px;
             margin: auto;
-            width: 400px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            width: 420px;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.3);
         }
+
         button {
-            padding: 10px 20px;
-            margin: 10px;
+            padding: 12px 20px;
+            margin: 8px;
             border: none;
-            background-color: #007BFF;
+            background-color: #ff1e1e;
             color: white;
-            border-radius: 5px;
+            border-radius: 8px;
             cursor: pointer;
+            font-weight: bold;
+            transition: 0.3s ease;
         }
+
+        button:hover {
+            background-color: #cc0000;
+            transform: scale(1.05);
+        }
+
         input {
-            padding: 8px;
-            width: 80%;
+            padding: 10px;
+            width: 85%;
             margin: 10px;
+            border-radius: 6px;
+            border: 1px solid #333;
+            background-color: #2a2a2a;
+            color: white;
+        }
+
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #111;
+            border-left: 4px solid #ff1e1e;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+
+        .menu {
+            margin-bottom: 20px;
         }
     </style>
 </head>
@@ -115,11 +131,13 @@ HTML_TEMPLATE = """
 
 <div class="card">
 
-    <form method="POST">
-        <button name="challenge" value="sum">Suma de Dígitos</button>
-        <button name="challenge" value="palindrome">Palíndromo</button>
-        <button name="challenge" value="sort">Ordenamiento</button>
-    </form>
+    <div class="menu">
+        <form method="POST">
+            <button name="challenge" value="sum">Suma de Dígitos</button>
+            <button name="challenge" value="palindrome">Palíndromo</button>
+            <button name="challenge" value="sort">Ordenamiento</button>
+        </form>
+    </div>
 
     {% if selected == "sum" %}
         <h3>Suma de Dígitos</h3>
@@ -152,8 +170,9 @@ HTML_TEMPLATE = """
     {% endif %}
 
     {% if result is not none %}
-        <h2>Resultado:</h2>
-        <p>{{ result }}</p>
+        <div class="result">
+            Resultado: {{ result }}
+        </div>
     {% endif %}
 
 </div>
@@ -162,9 +181,9 @@ HTML_TEMPLATE = """
 </html>
 """
 
-# =========================
+
 # ====== ROUTE ============
-# =========================
+
 
 @app.route("/", methods=["GET", "POST"])
 def home():
@@ -174,21 +193,29 @@ def home():
     if request.method == "POST":
         selected = request.form.get("challenge")
 
-        if selected == "sum" and "number" in request.form:
-            number = int(request.form["number"])
-            result = digitsSum(number)
+        try:
+            if selected == "sum" and "number" in request.form:
+                number = int(request.form["number"])
+                result = digitsSum(number)
 
-        elif selected == "palindrome" and "text" in request.form:
-            text = request.form["text"]
-            result = isPalindrome(text)
+            elif selected == "palindrome" and "text" in request.form:
+                text = request.form["text"]
+                result = isPalindrome(text)
 
-        elif selected == "sort" and "numbers" in request.form:
-            numbers = request.form["numbers"]
-            number_list = list(map(int, numbers.split(",")))
-            result = integerSort(number_list)
+            elif selected == "sort" and "numbers" in request.form:
+                numbers = request.form["numbers"]
+                number_list = [int(n.strip()) for n in numbers.split(",")]
+                result = integerSort(number_list)
+
+        except Exception:
+            result = "Entrada inválida"
 
     return render_template_string(HTML_TEMPLATE, result=result, selected=selected)
 
 
+
+# ====== PRODUCCIÓN =======
+
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
